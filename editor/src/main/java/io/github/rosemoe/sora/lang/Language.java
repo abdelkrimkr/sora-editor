@@ -38,6 +38,8 @@ import io.github.rosemoe.sora.text.CharPosition;
 import io.github.rosemoe.sora.text.ContentReference;
 import io.github.rosemoe.sora.widget.CodeEditor;
 import io.github.rosemoe.sora.widget.SymbolPairMatch;
+import io.github.rosemoe.sora.lang.folding.FoldingRegion;
+import java.util.List;
 
 /**
  * Language for editor
@@ -210,5 +212,14 @@ public interface Language {
      */
     @UiThread
     void destroy();
+
+    /**
+     * Analyze the given text and return a list of folding regions.
+     *
+     * @param text A reference to the content to be analyzed.
+     * @return A list of {@link FoldingRegion}s. Return an empty list if no folding regions are found
+     *         or if folding is not supported by this language.
+     */
+    List<FoldingRegion> getFoldingRegions(ContentReference text);
 
 }

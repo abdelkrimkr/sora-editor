@@ -23,6 +23,7 @@
  */
 package io.github.rosemoe.sora.lang.folding;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import io.github.rosemoe.sora.util.IntPair;
@@ -47,6 +48,7 @@ public class FoldingRegion {
     FoldingRegion(long start, long end) {
         this.start = start;
         this.end = end;
+        this.children = new ArrayList<>();
     }
 
     public void setCollapsed(boolean collapsed) {

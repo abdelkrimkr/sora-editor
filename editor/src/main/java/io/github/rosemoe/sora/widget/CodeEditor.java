@@ -76,6 +76,7 @@ import androidx.annotation.Px;
 import androidx.annotation.UiThread;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -102,6 +103,7 @@ import io.github.rosemoe.sora.graphics.Paint;
 import io.github.rosemoe.sora.lang.EmptyLanguage;
 import io.github.rosemoe.sora.lang.Language;
 import io.github.rosemoe.sora.lang.analysis.StyleUpdateRange;
+import io.github.rosemoe.sora.lang.folding.FoldingRegion;
 import io.github.rosemoe.sora.lang.diagnostic.DiagnosticsContainer;
 import io.github.rosemoe.sora.lang.format.Formatter;
 import io.github.rosemoe.sora.lang.styling.CodeBlock;
@@ -351,6 +353,7 @@ public class CodeEditor extends View implements ContentListener, Formatter.Forma
     private TextRange lastInsertion;
     private TextRange lastSelectedTextRange;
     private SnippetController snippetController;
+    private List<FoldingRegion> foldingRegions = Collections.emptyList();
 
     public CodeEditor(Context context) {
         this(context, null);
@@ -918,6 +921,7 @@ public class CodeEditor extends View implements ContentListener, Formatter.Forma
         if (text != null) {
             mgr.reset(new ContentReference(text), extraArguments);
         }
+        updateFoldingRegions();
 
         // Symbol pairs
         if (languageSymbolPairs != null) {
@@ -3839,6 +3843,7 @@ public class CodeEditor extends View implements ContentListener, Formatter.Forma
             editorLanguage.getAnalyzeManager().reset(new ContentReference(this.text), this.extraArguments);
             editorLanguage.getFormatter().cancel();
         }
+        updateFoldingRegions();
 
         dispatchEvent(new ContentChangeEvent(this, ContentChangeEvent.ACTION_SET_NEW_TEXT, new CharPosition(), this.text.getIndexer().getCharPosition(getLineCount() - 1, this.text.getColumnCount(getLineCount() - 1)), this.text, false));
         createLayout();
@@ -4459,6 +4464,39 @@ public class CodeEditor extends View implements ContentListener, Formatter.Forma
     //-------------------------------------------------------------------------------
     //-------------------------Override methods--------------------------------------
     //-------------------------------------------------------------------------------
+
+    private void updateFoldingRegions() {
+        List<FoldingRegion> oldRegions = new ArrayList<>(this.foldingRegions); // Keep a copy of old regions
+        if (editorLanguage != null && text != null) {
+            try {
+                this.foldingRegions = editorLanguage.getFoldingRegions(new ContentReference(text));
+                
+                // Attempt to preserve collapsed state
+                for (FoldingRegion newRegion : this.foldingRegions) {
+                    for (FoldingRegion oldRegion : oldRegions) {
+                        if (newRegion.getStartLine() == oldRegion.getStartLine() &&
+                            newRegion.getEndLine() == oldRegion.getEndLine() &&
+                            newRegion.getStartColumn() == oldRegion.getStartColumn() && // Be precise
+                            newRegion.getEndColumn() == oldRegion.getEndColumn()) {
+                            newRegion.setCollapsed(oldRegion.isCollapsed());
+                            break;
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                Log.e(LOG_TAG, "Error getting folding regions from language", e);
+                this.foldingRegions = Collections.emptyList();
+            }
+        } else {
+            this.foldingRegions = Collections.emptyList();
+        }
+        if (renderContext != null) { // renderContext might be null during initialization
+            renderContext.setFoldingRegions(this.foldingRegions);
+        }
+        createLayout(false); // Recalculate layout as folding might change visible lines
+        invalidate();
+    }
+
     @Override
     protected void onDraw(@NonNull Canvas canvas) {
         super.onDraw(canvas);
@@ -4949,6 +4987,39 @@ public class CodeEditor extends View implements ContentListener, Formatter.Forma
     }
 
     /**
+     * Toggles the folding state of the region at the given line.
+     * If the line is part of a foldable region, its collapsed state will be flipped.
+     *
+     * @param line The line number where the fold toggle is initiated.
+     */
+    public void toggleFoldRegion(int line) {
+        FoldingRegion targetRegion = null;
+        for (FoldingRegion region : foldingRegions) {
+            // Check if the line is the start of this region
+            // Or, if we want to allow toggling from anywhere within the region:
+            // if (line >= region.getStartLine() && line <= region.getEndLine()) {
+            // For now, let's assume toggling happens by clicking the start line of a region
+            if (line == region.getStartLine()) {
+                targetRegion = region;
+                break;
+            }
+            // TODO: Optionally search in child regions if needed, or decide how nested folds are handled.
+        }
+
+        if (targetRegion != null) {
+            targetRegion.setCollapsed(!targetRegion.isCollapsed());
+            if (renderContext != null) { // renderContext might be null during initialization
+                renderContext.setFoldingRegions(this.foldingRegions);
+            }
+            // Important: Need to recalculate layout and redraw
+            createLayout(false); // false to try to preserve wordwrap cache if possible, but a full clear might be safer.
+            invalidate();
+            // Consider also ensuring the toggled line is visible
+            // ensurePositionVisible(line, 0);
+        }
+    }
+
+    /**
      * Post the given action to message queue. Run the action if editor is not released.
      *
      * @param action The Runnable to be executed.
@@ -5031,6 +5102,7 @@ public class CodeEditor extends View implements ContentListener, Formatter.Forma
         dispatchEvent(new ContentChangeEvent(this, ContentChangeEvent.ACTION_INSERT, start, end, insertedContent, text.isUndoManagerWorking()));
         onSelectionChanged(SelectionChangeEvent.CAUSE_TEXT_MODIFICATION);
         lastInsertion = new TextRange(start.fromThis(), end.fromThis());
+        updateFoldingRegions();
     }
 
     @Override
@@ -5075,6 +5147,7 @@ public class CodeEditor extends View implements ContentListener, Formatter.Forma
         selectionAnchor = lastAnchorIsSelLeft ? cursor.left() : cursor.right();
         dispatchEvent(new ContentChangeEvent(this, ContentChangeEvent.ACTION_DELETE, start, end, deletedContent, text.isUndoManagerWorking()));
         onSelectionChanged(SelectionChangeEvent.CAUSE_TEXT_MODIFICATION);
+        updateFoldingRegions();
     }
 
     @Override

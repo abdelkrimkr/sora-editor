@@ -720,6 +720,46 @@ public final class EditorTouchEventHandler implements GestureDetector.OnGestureL
 
     @Override
     public boolean onSingleTapUp(@NonNull MotionEvent e) {
+        // Added Fold Toggle Logic
+        float touchX = e.getX();
+        float touchY = e.getY();
+
+        // Assuming gutter is to the left of line numbers or the text region if line numbers are off
+        float lineNumberRegionWidth = editor.isLineNumberEnabled() ? editor.measureLineNumber() : 0;
+        // Let's define a conceptual folding gutter width. This needs to be coordinated with actual drawing later.
+        float foldingGutterWidth = editor.getDpUnit() * 24; // Example width for folding icons
+        float textRegionOffset = editor.measureTextRegionOffset(); // Includes line numbers and divider
+
+        // Case 1: Line numbers are enabled. Folding gutter is to the left of line numbers.
+        // This is a common UI, but current measureTextRegionOffset includes line numbers.
+        // For simplicity now, let's assume folding icons are within the existing line number panel area or a dedicated space.
+        // Let's refine the condition: if line numbers are visible, the tap for folding could be on the line number itself or a dedicated icon area.
+
+        // For now, let's make a simpler assumption:
+        // If line numbers are enabled, taps on the line number area could also trigger folding.
+        // This is not ideal but simplifies initial touch handling.
+        // A more robust solution will define a specific Rect for folding icons.
+
+        if (touchX < textRegionOffset) { // Tap is in the general gutter area
+            long pos = editor.getPointPositionOnScreen(touchX, touchY);
+            int line = io.github.rosemoe.sora.util.IntPair.getFirst(pos);
+            if (line >= 0 && line < editor.getLineCount()) {
+                // Check if the tap is specifically on where a fold icon might be
+                // This is still a placeholder, actual hit testing against icons is needed later
+                if (editor.isLineNumberEnabled() && touchX < lineNumberRegionWidth + editor.getDividerMarginLeft()) { // Crude check: tap on line number area
+                     editor.toggleFoldRegion(line);
+                     return true; // Consumed the event
+                } else if (!editor.isLineNumberEnabled() && touchX < foldingGutterWidth) { // If no line numbers, a dedicated gutter space
+                     editor.toggleFoldRegion(line);
+                     return true; // Consumed the event
+                }
+                // If we want to allow clicking anywhere in the gutter to toggle, that's also an option
+                // editor.toggleFoldRegion(line);
+                // return true;
+            }
+        }
+        // End of Added Fold Toggle Logic
+
         scroller.forceFinished(true);
         if (editor.isFormatting()) {
             return true;

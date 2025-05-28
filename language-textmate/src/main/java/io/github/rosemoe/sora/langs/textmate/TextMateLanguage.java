@@ -48,8 +48,22 @@ import io.github.rosemoe.sora.langs.textmate.registry.model.DefaultGrammarDefini
 import io.github.rosemoe.sora.langs.textmate.registry.model.GrammarDefinition;
 import io.github.rosemoe.sora.langs.textmate.utils.StringUtils;
 import io.github.rosemoe.sora.text.CharPosition;
+import io.github.rosemoe.sora.text.Content;
+import io.github.rosemoe.sora.text.ContentLine;
 import io.github.rosemoe.sora.text.ContentReference;
 import io.github.rosemoe.sora.util.MyCharacter;
+import io.github.rosemoe.sora.langs.textmate.folding.FoldingHelper;
+import io.github.rosemoe.sora.langs.textmate.folding.RangesCollector;
+// import io.github.rosemoe.sora.langs.textmate.folding.FoldingRegions; // This is the tm specific one
+import io.github.rosemoe.sora.lang.folding.FoldingRegion; // This is the editor's one
+
+import org.eclipse.tm4e.core.internal.oniguruma.OnigResult;
+
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
 
 public class TextMateLanguage extends EmptyLanguage {
 
@@ -309,5 +323,63 @@ public class TextMateLanguage extends EmptyLanguage {
 
     public void setCompleterKeywords(String[] keywords) {
         autoComplete.setKeywords(keywords, false);
+    }
+
+    @Override
+    public List<FoldingRegion> getFoldingRegions(ContentReference contentRef) {
+        if (textMateAnalyzer == null || languageConfiguration == null) {
+            return Collections.emptyList();
+        }
+
+        Content content = contentRef.get();
+        if (content == null) {
+            return Collections.emptyList();
+        }
+
+        RangesCollector rangesCollector = new RangesCollector();
+        // The FoldingHelper is the TextMateAnalyzer instance
+        FoldingHelper helper = textMateAnalyzer;
+
+        // Iterate through lines
+        for (int lineNum = 0; lineNum < content.getLineCount(); lineNum++) {
+            // This relies on TextMateAnalyzer having processed the line and its state being available.
+            // getIndentFor and getResultFor retrieve pre-computed states.
+            int indent = helper.getIndentFor(lineNum);
+            OnigResult result = helper.getResultFor(lineNum); // This is from TextMateAnalyzer's cachedRegExp for folding markers
+
+            rangesCollector.insertFirst(lineNum, indent, result);
+        }
+        
+        // textMateAnalyzer.foldingOffside and textMateAnalyzer (as FoldingHelper) are needed.
+        // foldingOffside is a boolean field in TextMateAnalyzer.
+        // It's not directly accessible, let's assume it's false for now or find a way to get it.
+        // For now, let's see if `languageConfiguration.getFolding()` has offside.
+        boolean offSide = false;
+        if (languageConfiguration.getFolding() != null) {
+            offSide = languageConfiguration.getFolding().offSide;
+        }
+
+
+        io.github.rosemoe.sora.langs.textmate.folding.FoldingRegions tmFoldingRegions =
+                rangesCollector.toIndentRanges(content, offSide, helper);
+
+        if (tmFoldingRegions == null || tmFoldingRegions.length() == 0) {
+            return Collections.emptyList();
+        }
+
+        List<FoldingRegion> editorFoldingRegions = new ArrayList<>();
+        for (int i = 0; i < tmFoldingRegions.length(); i++) {
+            int startLine = tmFoldingRegions.getStartLineNumber(i);
+            int endLine = tmFoldingRegions.getEndLineNumber(i);
+
+            if (startLine < endLine) { // A fold must span at least one line.
+                // Defaulting startColumn to 0 and endColumn to the length of the endLine.
+                // Column information might be refined if TextMate grammars provide it for folding.
+                int startColumn = 0; // TextMate folding is typically line-based.
+                int endColumn = content.getLine(endLine).length();
+                editorFoldingRegions.add(new FoldingRegion(startLine, startColumn, endLine, endColumn));
+            }
+        }
+        return editorFoldingRegions;
     }
 }
