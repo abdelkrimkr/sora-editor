@@ -25,6 +25,7 @@ package io.github.rosemoe.sora.text;
 
 import androidx.annotation.NonNull;
 
+import java.util.Arrays;
 import java.util.Objects;
 
 import io.github.rosemoe.sora.util.IntPair;
@@ -84,14 +85,19 @@ public class TextUtils {
         } else {
             space = indentSize;
         }
-        StringBuilder s = new StringBuilder();
-        for (int i = 0; i < tab; i++) {
-            s.append('\t');
+
+        int totalLen = tab + space;
+        if (totalLen <= 0) {
+            return "";
         }
-        for (int i = 0; i < space; i++) {
-            s.append(' ');
+        char[] chars = new char[totalLen];
+        if (tab > 0) {
+            Arrays.fill(chars, 0, tab, '\t');
         }
-        return s.toString();
+        if (space > 0) {
+            Arrays.fill(chars, tab, totalLen, ' ');
+        }
+        return new String(chars);
     }
 
     public static int indexOf(@NonNull CharSequence text, @NonNull CharSequence pattern, boolean ignoreCase, int fromIndex) {
@@ -153,12 +159,11 @@ public class TextUtils {
         if (src.length() >= length) {
             return src;
         }
-        var sb = new StringBuilder(length);
-        for (int i = 0; i < length - src.length(); i++) {
-            sb.append(padChar);
-        }
-        sb.append(src);
-        return sb.toString();
+        int padCount = length - src.length();
+        char[] chars = new char[length];
+        Arrays.fill(chars, 0, padCount, padChar);
+        src.getChars(0, src.length(), chars, padCount);
+        return new String(chars);
     }
 
     /**
