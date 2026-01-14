@@ -24,6 +24,7 @@
 package io.github.rosemoe.sora.text;
 
 import android.text.GetChars;
+import android.text.TextUtils;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -175,9 +176,10 @@ public class ContentLine implements CharSequence, GetChars, BidiRequirementCheck
         ensureCapacity(length + len);
         System.arraycopy(value, dstOffset, value, dstOffset + len,
                 length - dstOffset);
-        for (int i = start; i < end; i++) {
-            var ch = s.charAt(i);
-            value[dstOffset++] = ch;
+        // Use bulk copy for performance
+        TextUtils.getChars(s, start, end, value, dstOffset);
+        for (int i = 0; i < len; i++) {
+            char ch = value[dstOffset + i];
             if (TextBidi.couldAffectRtl(ch)) {
                 rtlAffectingCount++;
             }
