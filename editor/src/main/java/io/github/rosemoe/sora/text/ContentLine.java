@@ -175,9 +175,22 @@ public class ContentLine implements CharSequence, GetChars, BidiRequirementCheck
         ensureCapacity(length + len);
         System.arraycopy(value, dstOffset, value, dstOffset + len,
                 length - dstOffset);
-        for (int i = start; i < end; i++) {
-            var ch = s.charAt(i);
-            value[dstOffset++] = ch;
+
+        if (s instanceof String) {
+            ((String) s).getChars(start, end, value, dstOffset);
+        } else if (s instanceof StringBuilder) {
+            ((StringBuilder) s).getChars(start, end, value, dstOffset);
+        } else if (s instanceof GetChars) {
+            ((GetChars) s).getChars(start, end, value, dstOffset);
+        } else {
+            for (int i = start; i < end; i++) {
+                value[dstOffset + i - start] = s.charAt(i);
+            }
+        }
+
+        // Check for RTL characters in the newly inserted range
+        for (int i = 0; i < len; i++) {
+            var ch = value[dstOffset + i];
             if (TextBidi.couldAffectRtl(ch)) {
                 rtlAffectingCount++;
             }
