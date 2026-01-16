@@ -60,7 +60,11 @@ public class TextBidi {
     }
 
     public static boolean couldAffectRtl(char c) {
-        return (0x0590 <= c && c <= 0x08FF) ||  // RTL scripts
+        // Fast path: All RTL and Bidi format chars are >= 0x0590
+        if (c < 0x0590) {
+            return false;
+        }
+        return (c <= 0x08FF) ||  // RTL scripts
                 c == 0x200E ||  // Bidi format character
                 c == 0x200F ||  // Bidi format character
                 (0x202A <= c && c <= 0x202E) ||  // Bidi format characters
