@@ -292,9 +292,12 @@ public class CachedIndexer implements Indexer, ContentListener {
         if (maxCacheCount <= 0) {
             return;
         }
-        cachedPositions.add(pos);
+        // LRU Policy: MRU at 0, LRU at end.
+        // findNearest() promotes accessed items to 0.
+        // New items should be added at 0 (MRU), and we should evict from end (LRU).
+        cachedPositions.add(0, pos);
         if (cachedPositions.size() > maxCacheCount) {
-            cachedPositions.remove(0);
+            cachedPositions.remove(cachedPositions.size() - 1);
         }
     }
 
