@@ -292,9 +292,9 @@ public class CachedIndexer implements Indexer, ContentListener {
         if (maxCacheCount <= 0) {
             return;
         }
-        cachedPositions.add(pos);
+        cachedPositions.add(0, pos);
         if (cachedPositions.size() > maxCacheCount) {
-            cachedPositions.remove(0);
+            cachedPositions.remove(cachedPositions.size() - 1);
         }
     }
 
