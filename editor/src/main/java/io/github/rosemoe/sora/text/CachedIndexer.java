@@ -104,7 +104,7 @@ public class CachedIndexer implements Indexer, ContentListener {
             nearestCharPosition = endPosition;
         }
         if (nearestCharPosition != startPosition && nearestCharPosition != endPosition) {
-            Collections.swap(cachedPositions, targetIndex, 0);
+            Collections.swap(cachedPositions, targetIndex, cachedPositions.size() - 1);
         }
         return nearestCharPosition;
     }
@@ -136,7 +136,7 @@ public class CachedIndexer implements Indexer, ContentListener {
             nearestCharPosition = endPosition;
         }
         if (nearestCharPosition != startPosition && nearestCharPosition != endPosition) {
-            Collections.swap(cachedPositions, 0, targetIndex);
+            Collections.swap(cachedPositions, targetIndex, cachedPositions.size() - 1);
         }
         return nearestCharPosition;
     }
