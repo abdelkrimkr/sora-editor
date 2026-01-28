@@ -422,23 +422,24 @@ public class CachedIndexer implements Indexer, ContentListener {
     @UnsupportedUserUsage
     public synchronized void afterDelete(@NonNull Content content, int startLine, int startColumn, int endLine, int endColumn,
                                          @NonNull CharSequence deletedContent) {
-        List<CharPosition> garbage = new ArrayList<>();
-        for (CharPosition pos : cachedPositions) {
+        // Optimization: Use iterator to remove elements in-place to avoid allocating a temporary list
+        // and iterating twice (once to find garbage, once to remove).
+        var iterator = cachedPositions.iterator();
+        while (iterator.hasNext()) {
+            var pos = iterator.next();
             if (pos.line == startLine) {
-                if (pos.column >= startColumn)
-                    garbage.add(pos);
+                if (pos.column >= startColumn) {
+                    iterator.remove();
+                }
             } else if (pos.line > startLine) {
-                if (pos.line < endLine) {
-                    garbage.add(pos);
-                } else if (pos.line == endLine) {
-                    garbage.add(pos);
+                if (pos.line <= endLine) {
+                    iterator.remove();
                 } else {
                     pos.index -= deletedContent.length();
                     pos.line -= endLine - startLine;
                 }
             }
         }
-        cachedPositions.removeAll(garbage);
         updateEnd();
     }
 
