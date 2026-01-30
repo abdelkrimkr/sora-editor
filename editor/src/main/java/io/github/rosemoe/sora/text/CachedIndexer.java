@@ -104,7 +104,8 @@ public class CachedIndexer implements Indexer, ContentListener {
             nearestCharPosition = endPosition;
         }
         if (nearestCharPosition != startPosition && nearestCharPosition != endPosition) {
-            Collections.swap(cachedPositions, targetIndex, 0);
+            // Swap to the end of list, so that it is not removed by LRU
+            Collections.swap(cachedPositions, targetIndex, cachedPositions.size() - 1);
         }
         return nearestCharPosition;
     }
@@ -136,7 +137,8 @@ public class CachedIndexer implements Indexer, ContentListener {
             nearestCharPosition = endPosition;
         }
         if (nearestCharPosition != startPosition && nearestCharPosition != endPosition) {
-            Collections.swap(cachedPositions, 0, targetIndex);
+            // Swap to the end of list, so that it is not removed by LRU
+            Collections.swap(cachedPositions, targetIndex, cachedPositions.size() - 1);
         }
         return nearestCharPosition;
     }
@@ -422,23 +424,23 @@ public class CachedIndexer implements Indexer, ContentListener {
     @UnsupportedUserUsage
     public synchronized void afterDelete(@NonNull Content content, int startLine, int startColumn, int endLine, int endColumn,
                                          @NonNull CharSequence deletedContent) {
-        List<CharPosition> garbage = new ArrayList<>();
-        for (CharPosition pos : cachedPositions) {
+        var iterator = cachedPositions.iterator();
+        while (iterator.hasNext()) {
+            var pos = iterator.next();
             if (pos.line == startLine) {
                 if (pos.column >= startColumn)
-                    garbage.add(pos);
+                    iterator.remove();
             } else if (pos.line > startLine) {
                 if (pos.line < endLine) {
-                    garbage.add(pos);
+                    iterator.remove();
                 } else if (pos.line == endLine) {
-                    garbage.add(pos);
+                    iterator.remove();
                 } else {
                     pos.index -= deletedContent.length();
                     pos.line -= endLine - startLine;
                 }
             }
         }
-        cachedPositions.removeAll(garbage);
         updateEnd();
     }
 
