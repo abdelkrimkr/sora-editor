@@ -104,7 +104,9 @@ public class CachedIndexer implements Indexer, ContentListener {
             nearestCharPosition = endPosition;
         }
         if (nearestCharPosition != startPosition && nearestCharPosition != endPosition) {
-            Collections.swap(cachedPositions, targetIndex, 0);
+            // cachedPositions is a small list. Move the hit to the end to implement LRU.
+            // Index 0 is the victim for eviction.
+            cachedPositions.add(cachedPositions.remove(targetIndex));
         }
         return nearestCharPosition;
     }
@@ -136,7 +138,9 @@ public class CachedIndexer implements Indexer, ContentListener {
             nearestCharPosition = endPosition;
         }
         if (nearestCharPosition != startPosition && nearestCharPosition != endPosition) {
-            Collections.swap(cachedPositions, 0, targetIndex);
+            // cachedPositions is a small list. Move the hit to the end to implement LRU.
+            // Index 0 is the victim for eviction.
+            cachedPositions.add(cachedPositions.remove(targetIndex));
         }
         return nearestCharPosition;
     }
@@ -422,23 +426,22 @@ public class CachedIndexer implements Indexer, ContentListener {
     @UnsupportedUserUsage
     public synchronized void afterDelete(@NonNull Content content, int startLine, int startColumn, int endLine, int endColumn,
                                          @NonNull CharSequence deletedContent) {
-        List<CharPosition> garbage = new ArrayList<>();
-        for (CharPosition pos : cachedPositions) {
+        var iterator = cachedPositions.iterator();
+        while (iterator.hasNext()) {
+            CharPosition pos = iterator.next();
             if (pos.line == startLine) {
-                if (pos.column >= startColumn)
-                    garbage.add(pos);
+                if (pos.column >= startColumn) {
+                    iterator.remove();
+                }
             } else if (pos.line > startLine) {
-                if (pos.line < endLine) {
-                    garbage.add(pos);
-                } else if (pos.line == endLine) {
-                    garbage.add(pos);
+                if (pos.line <= endLine) {
+                    iterator.remove();
                 } else {
                     pos.index -= deletedContent.length();
                     pos.line -= endLine - startLine;
                 }
             }
         }
-        cachedPositions.removeAll(garbage);
         updateEnd();
     }
 
