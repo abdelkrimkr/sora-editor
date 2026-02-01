@@ -161,15 +161,17 @@ public class CachedIndexer implements Indexer, ContentListener {
         int workIndex = start.index;
         //Move the column to the line end
         {
-            var addition = Math.max(content.getLineSeparatorUnsafe(workLine).getLength() - 1, 0);
-            int column = content.getColumnCountUnsafe(workLine) + addition;
+            var line = content.getLineUnsafe(workLine);
+            var addition = (line.getLineSeparator().getLength() == 2 ? 1 : 0);
+            int column = line.length() + addition;
             workIndex += column - workColumn;
             workColumn = column;
         }
         while (workIndex < index) {
             workLine++;
-            var addition = Math.max(content.getLineSeparatorUnsafe(workLine).getLength() - 1, 0);
-            workColumn = content.getColumnCountUnsafe(workLine) + addition;
+            var line = content.getLineUnsafe(workLine);
+            var addition = (line.getLineSeparator().getLength() == 2 ? 1 : 0);
+            workColumn = line.length() + addition;
             workIndex += workColumn + 1;
         }
         if (workIndex > index) {
@@ -198,8 +200,9 @@ public class CachedIndexer implements Indexer, ContentListener {
             workIndex -= workColumn + 1;
             workLine--;
             if (workLine != -1) {
-                var addition = Math.max(content.getLineSeparatorUnsafe(workLine).getLength() - 1, 0);
-                workColumn = content.getColumnCountUnsafe(workLine) + addition;
+                var line = content.getLineUnsafe(workLine);
+                var addition = (line.getLineSeparator().getLength() == 2 ? 1 : 0);
+                workColumn = line.length() + addition;
             } else {
                 // Reached the start of text,we have to use findIndexForward() as this method can not handle it
                 findIndexForward(startPosition, index, dest);
@@ -235,7 +238,8 @@ public class CachedIndexer implements Indexer, ContentListener {
             workIndex = workIndex - start.column;
         }
         while (workLine < line) {
-            workIndex += content.getColumnCountUnsafe(workLine) + content.getLineSeparatorUnsafe(workLine).getLength();
+            var l = content.getLineUnsafe(workLine);
+            workIndex += l.length() + l.getLineSeparator().getLength();
             workLine++;
         }
         dest.column = 0;
@@ -263,7 +267,8 @@ public class CachedIndexer implements Indexer, ContentListener {
             workIndex = workIndex - start.column;
         }
         while (workLine > line) {
-            workIndex -= content.getColumnCountUnsafe(workLine - 1) + content.getLineSeparatorUnsafe(workLine - 1).getLength();
+            var l = content.getLineUnsafe(workLine - 1);
+            workIndex -= l.length() + l.getLineSeparator().getLength();
             workLine--;
         }
         dest.column = 0;

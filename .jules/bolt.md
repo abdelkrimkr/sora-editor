@@ -5,3 +5,7 @@
 ## 2025-02-19 - CachedIndexer Eviction & Allocation
 **Learning:** `CachedIndexer`'s eviction policy was flawed; it swapped accessed items to index 0, but `push` evicted from index 0, causing the MRU item to be evicted immediately upon the next cache miss. Also, `afterDelete` was allocating a temporary `ArrayList` for removal.
 **Action:** Implement LRU correctly by moving accessed items to the "safe" end (opposite to eviction). Use `Iterator.remove()` for in-place filtering to avoid temporary collection allocations.
+
+## 2025-02-19 - CachedIndexer Loop Optimization
+**Learning:** In hot indexing loops like `CachedIndexer.findIndexForward`, repeatedly calling methods on `Content` that each perform a list lookup (`lines.get(i)`) adds significant overhead when iterating over many lines.
+**Action:** Expose a package-private/protected method `Content.getLineUnsafe(int)` to retrieve the `ContentLine` object once per iteration, then access its properties directly. This reduces `ArrayList.get()` calls by 50% per iteration and avoids redundant bounds checks.
