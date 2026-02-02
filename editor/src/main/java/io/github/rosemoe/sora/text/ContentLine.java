@@ -228,9 +228,13 @@ public class ContentLine implements CharSequence, GetChars, BidiRequirementCheck
             throw new StringIndexOutOfBoundsException();
         int len = end - start;
         if (len > 0) {
-            for (int i = start; i < end; i++) {
-                if (TextBidi.couldAffectRtl(value[i])) {
-                    rtlAffectingCount--;
+            // Optimization: If no characters in this line affect RTL, we can skip the loop
+            // to check each deleted character. This is a common case for code.
+            if (rtlAffectingCount > 0) {
+                for (int i = start; i < end; i++) {
+                    if (TextBidi.couldAffectRtl(value[i])) {
+                        rtlAffectingCount--;
+                    }
                 }
             }
             System.arraycopy(value, start + len, value, start, length - end);
