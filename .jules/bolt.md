@@ -5,3 +5,7 @@
 ## 2025-02-19 - CachedIndexer Eviction & Allocation
 **Learning:** `CachedIndexer`'s eviction policy was flawed; it swapped accessed items to index 0, but `push` evicted from index 0, causing the MRU item to be evicted immediately upon the next cache miss. Also, `afterDelete` was allocating a temporary `ArrayList` for removal.
 **Action:** Implement LRU correctly by moving accessed items to the "safe" end (opposite to eviction). Use `Iterator.remove()` for in-place filtering to avoid temporary collection allocations.
+
+## 2025-02-19 - ContentLine Deletion Optimization
+**Learning:** `ContentLine.delete` iterated over every deleted character to update `rtlAffectingCount`, which is unnecessary for lines containing only LTR text (the common case). Adding a simple `if (rtlAffectingCount > 0)` check skips this O(N) loop entirely for purely LTR lines.
+**Action:** Always check "fast path" conditions (like existing flags/counters) before entering expensive O(N) loops.
