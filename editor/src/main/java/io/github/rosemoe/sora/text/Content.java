@@ -1190,6 +1190,10 @@ public class Content implements CharSequence {
         return lines.get(line).length();
     }
 
+    protected ContentLine getLineUnsafe(int line) {
+        return lines.get(line);
+    }
+
     @NonNull
     protected LineSeparator getLineSeparatorUnsafe(int line) {
         return lines.get(line).getLineSeparator();
